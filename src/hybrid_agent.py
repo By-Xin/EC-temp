@@ -1,45 +1,43 @@
 """
-混合代理实现
-结合Q-learning和NEAT的混合学习系统
+混合代理模块
+结合NEAT和Q-learning的混合代理实现
 """
+import os
+import pickle
 import numpy as np
-from collections import deque
-from typing import List, Tuple, Optional
-import logging
+import torch
 import neat
-
-from src.rl.replay_buffer import ReplayBuffer
 from src.rl.q_learning import QAgent
+from src.rl.replay_buffer import ReplayBuffer
+from src.config import P_INIT, BETA_SIGMOID, NEAT_EVAL_PERIOD, REPLAY_CAPACITY
 
 class HybridAgent:
-    def __init__(self, config, neat_pop: neat.Population, q_agent: QAgent):
+    """混合代理类，结合NEAT和Q-learning"""
+    
+    def __init__(self, config, neat_pop, q_agent):
         """初始化混合代理
         
         Args:
-            config: 配置对象
+            config (dict): 配置参数字典
             neat_pop (neat.Population): NEAT种群
             q_agent (QAgent): Q-learning代理
         """
         self.config = config
         self.neat_pop = neat_pop
         self.q_agent = q_agent
+        self.replay_buffer = ReplayBuffer(config['REPLAY_CAPACITY'])
         
         # 混合参数
-        self.p = config['P_INIT']  # 初始Q-learning使用概率
-        self.beta = config['BETA_SIGMOID']  # sigmoid函数参数
-        self.neat_eval_period = config['NEAT_EVAL_PERIOD']  # NEAT评估周期
+        self.p = config['P_INIT']  # Q-learning的概率
+        self.beta = config['BETA_SIGMOID']  # sigmoid函数的温度参数
+        self.neat_eval_period = config['NEAT_EVAL_PERIOD']
         
-        # 经验回放
-        self.replay = ReplayBuffer(config['REPLAY_CAPACITY'])
+        # 训练统计
+        self.episode_count = 0
+        self.neat_fitness = []
+        self.q_fitness = []
         
-        # 训练状态
-        self.episode_counter = 0
-        self.returns = deque(maxlen=100)  # 记录最近100个episode的回报
-        
-        # 日志
-        self.logger = logging.getLogger("HybridAgent")
-        
-    def act(self, state: np.ndarray) -> int:
+    def act(self, state):
         """选择动作
         
         Args:
@@ -48,31 +46,20 @@ class HybridAgent:
         Returns:
             int: 选择的动作
         """
-        if np.random.rand() < self.p:
+        # 使用sigmoid函数动态调整p值
+        p = 1 / (1 + np.exp(-self.beta * (self.episode_count - self.neat_eval_period)))
+        
+        if np.random.random() < p:
             # 使用Q-learning
             return self.q_agent.act(state)
         else:
             # 使用NEAT
-            best_genome = max(self.neat_pop.population.values(), key=lambda x: x.fitness if x.fitness is not None else float('-inf'))
-            return self._get_action_from_genome(best_genome, state)
+            net = neat.nn.FeedForwardNetwork.create(self.neat_pop.best_genome, self.neat_pop.config)
+            action_values = net.activate(state)
+            return np.argmax(action_values)
             
-    def _get_action_from_genome(self, genome: neat.DefaultGenome, state: np.ndarray) -> int:
-        """从基因组获取动作
-        
-        Args:
-            genome (neat.DefaultGenome): NEAT基因组
-            state (np.ndarray): 当前状态
-            
-        Returns:
-            int: 选择的动作
-        """
-        net = neat.nn.FeedForwardNetwork.create(genome, self.neat_pop.config)
-        output = net.activate(state)
-        return np.argmax(output)
-            
-    def observe(self, state: np.ndarray, action: int, reward: float, 
-                next_state: np.ndarray, done: bool) -> None:
-        """观察环境反馈
+    def observe(self, state, action, reward, next_state, done):
+        """观察环境转换
         
         Args:
             state (np.ndarray): 当前状态
@@ -81,123 +68,147 @@ class HybridAgent:
             next_state (np.ndarray): 下一个状态
             done (bool): 是否结束
         """
-        # 存储经验
-        self.replay.add(state, action, reward, next_state, done)
-        self.q_agent.store(state, action, reward, next_state, done)
+        # 存储到经验回放缓冲区
+        self.replay_buffer.add(state, action, reward, next_state, done)
         
-        # 更新回报记录
+        # 更新episode计数
         if done:
-            self.returns.append(reward)
+            self.episode_count += 1
             
-    def learn(self, done: bool) -> None:
-        """执行学习
+    def learn(self, done):
+        """从经验中学习
         
         Args:
-            done (bool): 当前episode是否结束
+            done (bool): 是否结束
         """
         # Q-learning学习
-        self.q_agent.learn_step(self.replay.sample)
-        
-        if done:
-            self.episode_counter += 1
+        if len(self.replay_buffer) >= self.q_agent.batch_size:
+            batch = self.replay_buffer.sample(self.q_agent.batch_size)
+            self.q_agent.learn(batch)
             
-            # 定期评估NEAT种群
-            if self.episode_counter % self.neat_eval_period == 0:
-                self._evaluate_neat_population()
+        # NEAT学习
+        if done and self.episode_count % self.neat_eval_period == 0:
+            # 评估当前种群
+            for genome in self.neat_pop.population.values():
+                genome.fitness = self._evaluate_genome(genome)
                 
-            # 更新混合概率
-            self._update_p()
+            # 进化一代
+            self.neat_pop.run(self._evaluate_genome, 1)
             
-    def _evaluate_neat_population(self) -> None:
-        """评估NEAT种群"""
-        # 为每个基因组计算适应度
-        for genome_id, genome in self.neat_pop.population.items():
-            total_r = 0.0
-            n_evals = 5  # 每个个体评估5次
+    def _evaluate_genome(self, genome):
+        """评估基因组
+        
+        Args:
+            genome (neat.DefaultGenome): 要评估的基因组
             
-            for _ in range(n_evals):
-                # 随机采样一个episode
-                traj = self.replay.random_episode()
-                if not traj:
-                    continue
-                    
-                # 使用个体执行episode
-                state = traj[0][0]  # 初始状态
-                episode_return = 0.0
+        Returns:
+            float: 适应度值
+        """
+        net = neat.nn.FeedForwardNetwork.create(genome, self.neat_pop.config)
+        total_reward = 0.0
+        
+        # 使用最近的几个episode进行评估
+        if len(self.replay_buffer) > 0:
+            batch = self.replay_buffer.sample(min(10, len(self.replay_buffer)))
+            for state, _, _, _, _ in batch:
+                action_values = net.activate(state)
+                action = np.argmax(action_values)
+                q_value = self.q_agent.estimate_value(state, action)
+                total_reward += q_value
                 
-                for state, action, reward, next_state, done in traj:
-                    # 使用个体选择动作
-                    indiv_action = self._get_action_from_genome(genome, state)
-                    if indiv_action == action:  # 如果动作匹配
-                        episode_return += reward
-                    state = next_state
-                    if done:
-                        break
-                        
-                total_r += episode_return
-                
-            genome.fitness = total_r / n_evals
-            
-        # 进化一代
-        self.neat_pop.run(lambda genomes, config: None, 1)
+        return total_reward
         
-    def _update_p(self) -> None:
-        """更新混合概率p"""
-        if len(self.q_agent.returns) < 50:
-            return
-            
-        # 计算最近50个episode的平均回报
-        R_q = np.mean(list(self.q_agent.returns)[-50:])
-        
-        # 获取NEAT种群的最佳适应度
-        best_genome = max(self.neat_pop.population.values(), key=lambda x: x.fitness if x.fitness is not None else float('-inf'))
-        R_e = best_genome.fitness if best_genome.fitness is not None else 0.0
-        
-        # 使用sigmoid函数更新p
-        delta = R_q - R_e
-        new_p = 1.0 / (1.0 + np.exp(-self.beta * delta))
-        
-        # 平滑更新
-        self.p = 0.9 * self.p + 0.1 * new_p
-        
-        # 限制在合理范围内
-        self.p = np.clip(self.p, 0.05, 0.95)
-        
-        self.logger.info(f"Updated p: {self.p:.3f} (Q: {R_q:.2f}, NEAT: {R_e:.2f})")
-        
-    def save(self, path: str) -> None:
+    def save(self, path):
         """保存模型
         
         Args:
             path (str): 保存路径
         """
+        # 创建保存目录
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
+        # 保存NEAT种群
+        with open(f"{path}_neat.pkl", 'wb') as f:
+            pickle.dump(self.neat_pop, f)
+            
         # 保存Q-learning模型
         self.q_agent.save(f"{path}_q.pth")
         
-        # 保存NEAT种群
-        self.neat_pop.save(f"{path}_neat.pkl")
-        
-        # 保存混合参数
-        np.save(f"{path}_hybrid.npy", {
+        # 保存混合代理状态
+        state = {
             'p': self.p,
-            'episode_counter': self.episode_counter,
-            'returns': list(self.returns)
-        })
-        
-    def load(self, path: str) -> None:
+            'beta': self.beta,
+            'episode_count': self.episode_count,
+            'neat_fitness': self.neat_fitness,
+            'q_fitness': self.q_fitness
+        }
+        with open(f"{path}_state.pkl", 'wb') as f:
+            pickle.dump(state, f)
+            
+    def load(self, path):
         """加载模型
         
         Args:
             path (str): 加载路径
         """
+        # 加载NEAT种群
+        with open(f"{path}_neat.pkl", 'rb') as f:
+            self.neat_pop = pickle.load(f)
+            
         # 加载Q-learning模型
         self.q_agent.load(f"{path}_q.pth")
         
-        # 加载NEAT种群
-        self.neat_pop.load(f"{path}_neat.pkl")
+        # 加载混合代理状态
+        with open(f"{path}_state.pkl", 'rb') as f:
+            state = pickle.load(f)
+            self.p = state['p']
+            self.beta = state['beta']
+            self.episode_count = state['episode_count']
+            self.neat_fitness = state['neat_fitness']
+            self.q_fitness = state['q_fitness']
+            
+    def compare_with_neat(self, env, num_episodes=100):
+        """与普通NEAT进行对比
         
-        # 加载混合参数
-        params = np.load(f"{path}_hybrid.npy", allow_pickle=True).item()
-        self.p = params['p']
-        self.episode_counter = params['episode_counter']
-        self.returns = deque(params['returns'], maxlen=100) 
+        Args:
+            env: 环境
+            num_episodes (int): 评估的episode数
+            
+        Returns:
+            tuple: (混合代理平均回报, NEAT平均回报)
+        """
+        # 评估混合代理
+        hybrid_returns = []
+        for _ in range(num_episodes):
+            state, _ = env.reset()
+            done = False
+            truncated = False
+            episode_return = 0.0
+            
+            while not (done or truncated):
+                action = self.act(state)
+                next_state, reward, done, truncated, _ = env.step(action)
+                episode_return += reward
+                state = next_state
+                
+            hybrid_returns.append(episode_return)
+            
+        # 评估普通NEAT
+        neat_returns = []
+        for _ in range(num_episodes):
+            state, _ = env.reset()
+            done = False
+            truncated = False
+            episode_return = 0.0
+            
+            while not (done or truncated):
+                net = neat.nn.FeedForwardNetwork.create(self.neat_pop.best_genome, self.neat_pop.config)
+                action_values = net.activate(state)
+                action = np.argmax(action_values)
+                next_state, reward, done, truncated, _ = env.step(action)
+                episode_return += reward
+                state = next_state
+                
+            neat_returns.append(episode_return)
+            
+        return np.mean(hybrid_returns), np.mean(neat_returns) 

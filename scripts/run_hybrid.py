@@ -134,13 +134,29 @@ def main():
     returns, p_values = train_hybrid_agent(env, agent, num_episodes, logger)
     
     # 保存模型
+    os.makedirs(MODEL_DIR, exist_ok=True)
     agent.save(os.path.join(MODEL_DIR, 'hybrid_agent'))
     
-    # 绘制结果
+    # 绘制训练结果
     plot_training_progression(returns, "Hybrid Agent Training")
     plot_hybrid_results(returns, p_values, "Hybrid Agent Results")
     
-    logger.info("Training completed")
+    # 与普通NEAT进行对比
+    logger.info("Comparing with vanilla NEAT...")
+    hybrid_mean, neat_mean = agent.compare_with_neat(env, num_episodes=100)
+    logger.info(f"Hybrid Agent Mean Return: {hybrid_mean:.2f}")
+    logger.info(f"Vanilla NEAT Mean Return: {neat_mean:.2f}")
+    
+    # 绘制对比结果
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(10, 6))
+    plt.bar(['Hybrid Agent', 'Vanilla NEAT'], [hybrid_mean, neat_mean])
+    plt.title('Performance Comparison')
+    plt.ylabel('Mean Return')
+    plt.savefig(os.path.join(LOG_DIR, 'performance_comparison.png'))
+    plt.close()
+    
+    logger.info("Training and comparison completed")
 
 if __name__ == "__main__":
     main() 
