@@ -5,8 +5,22 @@
 import gym
 import neat
 import numpy as np
-from src.config import EP_STEP, USE_SOFTMAX
+from src.config import EP_STEP, USE_SOFTMAX, GAME
 from src.utils import softmax
+
+def create_environment(seed=None):
+    """创建环境实例
+    
+    Args:
+        seed (int, optional): 随机种子. Defaults to None.
+    
+    Returns:
+        gym.Env: 创建的环境
+    """
+    env = gym.make(GAME)
+    if seed is not None:
+        env.reset(seed=seed)
+    return env
 
 def make_env(seed=None):
     """创建单一环境，使用不同的随机种子
