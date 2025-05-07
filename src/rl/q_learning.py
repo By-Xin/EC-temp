@@ -47,35 +47,35 @@ class QNetwork(nn.Module):
         return self.network(state)
 
 class QAgent:
-    def __init__(self, state_size: int, action_size: int, config):
+    def __init__(self, state_size: int, action_size: int, config: dict):
         """初始化Q-learning代理
         
         Args:
             state_size (int): 状态空间维度
             action_size (int): 动作空间维度
-            config: 配置对象
+            config (dict): 配置字典
         """
         self.state_size = state_size
         self.action_size = action_size
         self.config = config
         
         # 初始化Q网络
-        self.q_network = QNetwork(state_size, action_size, config.Q_HIDDEN_DIMS)
-        self.target_network = QNetwork(state_size, action_size, config.Q_HIDDEN_DIMS)
+        self.q_network = QNetwork(state_size, action_size, config['Q_HIDDEN_DIMS'])
+        self.target_network = QNetwork(state_size, action_size, config['Q_HIDDEN_DIMS'])
         self.target_network.load_state_dict(self.q_network.state_dict())
         
         # 优化器
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=config.LR_Q)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=config['LR_Q'])
         
         # 经验回放
-        self.memory = deque(maxlen=config.REPLAY_CAPACITY)
+        self.memory = deque(maxlen=config['REPLAY_CAPACITY'])
         
         # 训练参数
-        self.gamma = config.GAMMA
+        self.gamma = config['GAMMA']
         self.epsilon = 1.0
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
-        self.batch_size = config.BATCH_SIZE
+        self.batch_size = config['BATCH_SIZE']
         
         # 记录回报
         self.returns = deque(maxlen=100)
