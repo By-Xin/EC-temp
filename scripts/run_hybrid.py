@@ -6,6 +6,7 @@ import sys
 import logging
 import numpy as np
 from tqdm import tqdm
+import neat
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,10 +15,9 @@ from src.config import (
     NUM_RUNS, NUM_GENERATIONS, SEED_BASE, CONFIDENCE,
     P_INIT, BETA_SIGMOID, NEAT_EVAL_PERIOD, POPULATION_SIZE,
     REPLAY_CAPACITY, BATCH_SIZE, Q_HIDDEN_DIMS, LR_Q, GAMMA,
-    ALPHA_MIXED_REWARD, LOG_DIR, MODEL_DIR
+    ALPHA_MIXED_REWARD, LOG_DIR, MODEL_DIR, CONFIG_PATH
 )
 from src.environment import make_env
-from src.neat_algorithms import NeatPopulation
 from src.rl.q_learning import QAgent
 from src.hybrid_agent import HybridAgent
 from src.evaluation import evaluate_genome
@@ -98,7 +98,10 @@ def main():
     action_size = env.action_space.n
     
     # 创建NEAT种群
-    neat_pop = NeatPopulation(POPULATION_SIZE)
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                        neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                        CONFIG_PATH)
+    neat_pop = neat.Population(config)
     
     # 创建Q-learning代理
     q_agent = QAgent(state_size, action_size, {

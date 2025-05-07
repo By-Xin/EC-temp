@@ -6,18 +6,18 @@ import numpy as np
 from collections import deque
 from typing import List, Tuple, Optional
 import logging
+import neat
 
 from src.rl.replay_buffer import ReplayBuffer
 from src.rl.q_learning import QAgent
-from src.neat_algorithms import NeatPopulationBase
 
 class HybridAgent:
-    def __init__(self, config, neat_pop: NeatPopulationBase, q_agent: QAgent):
+    def __init__(self, config, neat_pop: neat.Population, q_agent: QAgent):
         """初始化混合代理
         
         Args:
             config: 配置对象
-            neat_pop (NeatPopulationBase): NEAT种群
+            neat_pop (neat.Population): NEAT种群
             q_agent (QAgent): Q-learning代理
         """
         self.config = config
@@ -25,12 +25,12 @@ class HybridAgent:
         self.q_agent = q_agent
         
         # 混合参数
-        self.p = config.P_INIT  # 初始Q-learning使用概率
-        self.beta = config.BETA_SIGMOID  # sigmoid函数参数
-        self.neat_eval_period = config.NEAT_EVAL_PERIOD  # NEAT评估周期
+        self.p = config['P_INIT']  # 初始Q-learning使用概率
+        self.beta = config['BETA_SIGMOID']  # sigmoid函数参数
+        self.neat_eval_period = config['NEAT_EVAL_PERIOD']  # NEAT评估周期
         
         # 经验回放
-        self.replay = ReplayBuffer(config.REPLAY_CAPACITY)
+        self.replay = ReplayBuffer(config['REPLAY_CAPACITY'])
         
         # 训练状态
         self.episode_counter = 0
@@ -53,7 +53,22 @@ class HybridAgent:
             return self.q_agent.act(state)
         else:
             # 使用NEAT
-            return self.neat_pop.best_individual().act(state)
+            best_genome = max(self.neat_pop.population.values(), key=lambda x: x.fitness if x.fitness is not None else float('-inf'))
+            return self._get_action_from_genome(best_genome, state)
+            
+    def _get_action_from_genome(self, genome: neat.DefaultGenome, state: np.ndarray) -> int:
+        """从基因组获取动作
+        
+        Args:
+            genome (neat.DefaultGenome): NEAT基因组
+            state (np.ndarray): 当前状态
+            
+        Returns:
+            int: 选择的动作
+        """
+        net = neat.nn.FeedForwardNetwork.create(genome, self.neat_pop.config)
+        output = net.activate(state)
+        return np.argmax(output)
             
     def observe(self, state: np.ndarray, action: int, reward: float, 
                 next_state: np.ndarray, done: bool) -> None:
@@ -88,21 +103,15 @@ class HybridAgent:
             
             # 定期评估NEAT种群
             if self.episode_counter % self.neat_eval_period == 0:
-                fitness = self._compute_fitnesses()
-                self.neat_pop.evolve(fitness)
+                self._evaluate_neat_population()
                 
             # 更新混合概率
             self._update_p()
             
-    def _compute_fitnesses(self) -> np.ndarray:
-        """计算NEAT个体的适应度
-        
-        Returns:
-            np.ndarray: 适应度数组
-        """
-        fitness = np.zeros(self.neat_pop.size)
-        
-        for idx, indiv in enumerate(self.neat_pop.individuals):
+    def _evaluate_neat_population(self) -> None:
+        """评估NEAT种群"""
+        # 为每个基因组计算适应度
+        for genome_id, genome in self.neat_pop.population.items():
             total_r = 0.0
             n_evals = 5  # 每个个体评估5次
             
@@ -118,7 +127,7 @@ class HybridAgent:
                 
                 for state, action, reward, next_state, done in traj:
                     # 使用个体选择动作
-                    indiv_action = indiv.act(state)
+                    indiv_action = self._get_action_from_genome(genome, state)
                     if indiv_action == action:  # 如果动作匹配
                         episode_return += reward
                     state = next_state
@@ -127,18 +136,22 @@ class HybridAgent:
                         
                 total_r += episode_return
                 
-            fitness[idx] = total_r / n_evals
+            genome.fitness = total_r / n_evals
             
-        return fitness
+        # 进化一代
+        self.neat_pop.run(lambda genomes, config: None, 1)
         
     def _update_p(self) -> None:
         """更新混合概率p"""
-        if len(self.q_agent.returns) < 50 or len(self.neat_pop.returns) < 50:
+        if len(self.q_agent.returns) < 50:
             return
             
         # 计算最近50个episode的平均回报
         R_q = np.mean(list(self.q_agent.returns)[-50:])
-        R_e = np.mean(list(self.neat_pop.returns)[-50:])
+        
+        # 获取NEAT种群的最佳适应度
+        best_genome = max(self.neat_pop.population.values(), key=lambda x: x.fitness if x.fitness is not None else float('-inf'))
+        R_e = best_genome.fitness if best_genome.fitness is not None else 0.0
         
         # 使用sigmoid函数更新p
         delta = R_q - R_e
