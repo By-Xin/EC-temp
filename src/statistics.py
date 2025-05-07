@@ -3,23 +3,7 @@
 包含数据分析和结果比较的函数
 """
 import numpy as np
-from scipy import stats
 from src.utils import calculate_confidence_interval
-
-def perform_wilcoxon_test(meta_rewards, vanilla_rewards, alpha=0.05):
-    """执行Wilcoxon rank-sum test
-    
-    Args:
-        meta_rewards (list): Meta-NEAT的奖励列表
-        vanilla_rewards (list): Vanilla NEAT的奖励列表
-        alpha (float, optional): 显著性水平. Defaults to 0.05.
-    
-    Returns:
-        tuple: (统计量, p值, 是否显著)
-    """
-    statistic, p_value = stats.ranksums(meta_rewards, vanilla_rewards)
-    is_significant = p_value < alpha
-    return statistic, p_value, is_significant
 
 def compare_results(generation_settings, meta_results, vanilla_results, confidence=0.95):
     """比较Meta-NEAT和Vanilla NEAT的结果，输出统计分析
@@ -39,8 +23,7 @@ def compare_results(generation_settings, meta_results, vanilla_results, confiden
         ci = calculate_confidence_interval(rewards, confidence)
         print(f"Vanilla NEAT (Generations = {gens}): Mean Reward = {np.mean(rewards):.2f} ± {ci:.2f} ({confidence*100:.0f}% CI), Std = {np.std(rewards):.2f}")
     
-    print("\n=== Wilcoxon Rank-Sum Test Results ===")
-    # 比较结论（基于Wilcoxon test和置信区间）
+    # 比较结论（基于平均奖励和置信区间）
     for gens, m_rewards in meta_results:
         for g_v, v_rewards in vanilla_results:
             if gens == g_v:
@@ -49,18 +32,12 @@ def compare_results(generation_settings, meta_results, vanilla_results, confiden
                 m_ci = calculate_confidence_interval(m_rewards, confidence)
                 v_ci = calculate_confidence_interval(v_rewards, confidence)
                 
-                # 执行Wilcoxon test
-                statistic, p_value, is_significant = perform_wilcoxon_test(m_rewards, v_rewards)
-                
-                print(f"\nAt {gens} generations:")
-                print(f"Meta-NEAT: {m_mean:.2f} ± {m_ci:.2f}")
-                print(f"Vanilla NEAT: {v_mean:.2f} ± {v_ci:.2f}")
-                print(f"Wilcoxon test: statistic = {statistic:.4f}, p-value = {p_value:.4f}")
-                
-                if is_significant:
-                    if m_mean > v_mean:
-                        print("Meta-NEAT significantly outperforms Vanilla NEAT (p < 0.05)")
-                    else:
-                        print("Vanilla NEAT significantly outperforms Meta-NEAT (p < 0.05)")
+                if m_mean - m_ci > v_mean + v_ci:
+                    print(f"\nAt {gens} generations: Meta-NEAT significantly outperforms Vanilla NEAT")
+                    print(f"Meta-NEAT: {m_mean:.2f} ± {m_ci:.2f} vs Vanilla NEAT: {v_mean:.2f} ± {v_ci:.2f}")
+                elif v_mean - v_ci > m_mean + m_ci:
+                    print(f"\nAt {gens} generations: Vanilla NEAT significantly outperforms Meta-NEAT")
+                    print(f"Vanilla NEAT: {v_mean:.2f} ± {v_ci:.2f} vs Meta-NEAT: {m_mean:.2f} ± {m_ci:.2f}")
                 else:
-                    print("No significant difference between Meta-NEAT and Vanilla NEAT (p >= 0.05)")
+                    print(f"\nAt {gens} generations: No significant difference between Meta-NEAT and Vanilla NEAT")
+                    print(f"Meta-NEAT: {m_mean:.2f} ± {m_ci:.2f} vs Vanilla NEAT: {v_mean:.2f} ± {v_ci:.2f}")

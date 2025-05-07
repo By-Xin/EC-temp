@@ -1,18 +1,14 @@
-# neat-python configuration for the LunarLander-v2 environment on OpenAI Gym
-
 [NEAT]
-pop_size              = 1000
-# Note: the fitness threshold will never be reached because
-# we are controlling the termination ourselves based on simulation performance.
 fitness_criterion     = max
-fitness_threshold     = 2.
-reset_on_extinction   = 0
+fitness_threshold     = 0.95
+pop_size              = 50
+reset_on_extinction   = True
 
 [DefaultGenome]
 # node activation options
-activation_default      = relu
+activation_default      = sigmoid
 activation_mutate_rate  = 0.0
-activation_options      = relu
+activation_options      = sigmoid
 
 # node aggregation options
 aggregation_default     = sum
@@ -30,22 +26,21 @@ bias_replace_rate       = 0.1
 
 # genome compatibility options
 compatibility_disjoint_coefficient = 1.0
-compatibility_weight_coefficient   = 1.0
+compatibility_weight_coefficient   = 0.5
 
 # connection add/remove rates
-conn_add_prob           = 0.9
-conn_delete_prob        = 0.2
+conn_add_prob           = 0.5
+conn_delete_prob        = 0.3
 
 # connection enable options
 enabled_default         = True
-enabled_mutate_rate     = 0.01
+enabled_mutate_rate     = 0.1
 
 feed_forward            = True
-initial_connection      = full
-# options (unconnected, fs_neat, full)
+initial_connection      = full_direct
 
 # node add/remove rates
-node_add_prob           = 0.9
+node_add_prob           = 0.2
 node_delete_prob        = 0.2
 
 # network parameters
@@ -65,8 +60,8 @@ response_replace_rate   = 0.0
 # connection weight options
 weight_init_mean        = 0.0
 weight_init_stdev       = 1.0
-weight_max_value        = 30.
-weight_min_value        = -30.
+weight_max_value        = 30
+weight_min_value        = -30
 weight_mutate_power     = 0.5
 weight_mutate_rate      = 0.8
 weight_replace_rate     = 0.1
@@ -76,9 +71,14 @@ compatibility_threshold = 3.0
 
 [DefaultStagnation]
 species_fitness_func = max
-max_stagnation       = 20
-species_elitism      = 4
+max_stagnation       = 15
+species_elitism      = 2
 
 [DefaultReproduction]
+elitism            = 2
+survival_threshold = 0.2
+
+# 在 neat_config.txt 文件中添加以下部分
+[CustomReproduction]
 elitism            = 2
 survival_threshold = 0.2

@@ -13,11 +13,11 @@ from src.config import (
     BASE_LOCAL_TRIALS, 
     MAX_LOCAL_TRIALS, 
     local_search_stats, 
-    collect_statistics
-)
+    collect_statistics,
+    VERBOSE)
 from src.utils import log_print
 from src.environment import make_env, evaluate_single_genome
-
+import gym
 def mutate_genome(genome, config):
     """基因组轻度变异函数：用于内循环局部适应
     
