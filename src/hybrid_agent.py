@@ -115,13 +115,26 @@ class HybridAgent:
         if done and self.episode_count % self.neat_eval_period == 0:
             # 评估当前种群
             for genome in self.neat_pop.population.values():
-                genome.fitness = self._evaluate_genome(genome)
+                genome.fitness = self._evaluate_single_genome(genome)
                 
             # 进化一代
             self.neat_pop.run(self._evaluate_genome, 1)
             
-    def _evaluate_genome(self, genome):
-        """评估基因组
+    def _evaluate_genome(self, genomes, config):
+        """评估基因组种群
+        
+        Args:
+            genomes (list): 基因组列表
+            config (neat.Config): NEAT配置
+            
+        Returns:
+            None
+        """
+        for genome_id, genome in genomes:
+            genome.fitness = self._evaluate_single_genome(genome)
+            
+    def _evaluate_single_genome(self, genome):
+        """评估单个基因组
         
         Args:
             genome (neat.DefaultGenome): 要评估的基因组
