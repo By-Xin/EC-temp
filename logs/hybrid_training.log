@@ -1,0 +1,6 @@
+2025-05-07 16:22:04,484 - HybridTraining - INFO - Starting hybrid agent training
+2025-05-07 16:22:04,487 - HybridTraining - INFO - Environment: CartPole-v1
+2025-05-07 16:22:04,487 - HybridTraining - INFO - State space: Box([-4.8000002e+00 -3.4028235e+38 -4.1887903e-01 -3.4028235e+38], [4.8000002e+00 3.4028235e+38 4.1887903e-01 3.4028235e+38], (4,), float32)
+2025-05-07 16:22:04,487 - HybridTraining - INFO - Action space: Discrete(2)
+2025-05-07 16:22:05,193 - HybridTraining - INFO - Episode 0: Return = 11.11, p = 0.500
+2025-05-07 16:22:11,753 - HybridTraining - INFO - Episode 100: Return = 22.97, p = 0.500

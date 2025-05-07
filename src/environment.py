@@ -39,6 +39,9 @@ def evaluate_single_genome(genome, config, env):
     net = neat.nn.FeedForwardNetwork.create(genome, config)
     observation, _ = env.reset()
     total_reward = 0.0
+    done = False
+    truncated = False
+    
     for _ in range(EP_STEP):
         action_values = net.activate(observation)
         if USE_SOFTMAX:
@@ -46,8 +49,11 @@ def evaluate_single_genome(genome, config, env):
             action = np.random.choice(len(probs), p=probs)
         else:
             action = np.argmax(action_values)
+            
         observation, reward, done, truncated, _ = env.step(action)
         total_reward += reward
+        
         if done or truncated:
             break
+            
     return total_reward

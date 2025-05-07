@@ -49,16 +49,17 @@ def train_hybrid_agent(env, agent, num_episodes, logger):
     p_values = []
     
     for episode in tqdm(range(num_episodes), desc="Training"):
-        state = env.reset()
+        state, _ = env.reset()
         done = False
+        truncated = False
         episode_return = 0.0
         
-        while not done:
+        while not (done or truncated):
             # 选择动作
             action = agent.act(state)
             
             # 执行动作
-            next_state, reward, done, _ = env.step(action)
+            next_state, reward, done, truncated, _ = env.step(action)
             
             # 可选：使用Q值进行奖励塑形
             if ALPHA_MIXED_REWARD > 0:
@@ -66,8 +67,8 @@ def train_hybrid_agent(env, agent, num_episodes, logger):
                 reward = reward + ALPHA_MIXED_REWARD * q_val
             
             # 观察和学习
-            agent.observe(state, action, reward, next_state, done)
-            agent.learn(done)
+            agent.observe(state, action, reward, next_state, done or truncated)
+            agent.learn(done or truncated)
             
             state = next_state
             episode_return += reward
@@ -96,6 +97,11 @@ def main():
     env = make_env()
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.n
+    
+    # 打印环境信息
+    logger.info(f"Environment: {env.unwrapped.spec.id}")
+    logger.info(f"State space: {env.observation_space}")
+    logger.info(f"Action space: {env.action_space}")
     
     # 创建NEAT种群
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
