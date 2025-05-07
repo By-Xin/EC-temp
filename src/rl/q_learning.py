@@ -191,4 +191,38 @@ class QAgent:
         self.q_network.load_state_dict(checkpoint['q_network'])
         self.target_network.load_state_dict(checkpoint['target_network'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
-        self.epsilon = checkpoint['epsilon'] 
+        self.epsilon = checkpoint['epsilon']
+
+    def learn(self, batch):
+        """从经验中学习
+        
+        Args:
+            batch (tuple): 经验批次 (states, actions, rewards, next_states, dones)
+        """
+        states, actions, rewards, next_states, dones = batch
+        
+        # 转换为tensor
+        states = torch.FloatTensor(states)
+        actions = torch.LongTensor(actions)
+        rewards = torch.FloatTensor(rewards)
+        next_states = torch.FloatTensor(next_states)
+        dones = torch.FloatTensor(dones)
+        
+        # 计算当前Q值
+        current_q_values = self.q_network(states).gather(1, actions.unsqueeze(1))
+        
+        # 计算目标Q值
+        with torch.no_grad():
+            next_q_values = self.target_network(next_states).max(1)[0]
+            target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
+            
+        # 计算损失
+        loss = nn.MSELoss()(current_q_values.squeeze(), target_q_values)
+        
+        # 优化
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        # 更新epsilon
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay) 

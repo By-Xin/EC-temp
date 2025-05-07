@@ -148,7 +148,8 @@ class HybridAgent:
         # 使用最近的几个episode进行评估
         if len(self.replay_buffer) > 0:
             batch = self.replay_buffer.sample(min(10, len(self.replay_buffer)))
-            for state, _, _, _, _ in batch:
+            states = batch[0]  # 获取状态批次
+            for state in states:
                 action_values = net.activate(state)
                 action = np.argmax(action_values)
                 q_value = self.q_agent.estimate_value(state, action)
