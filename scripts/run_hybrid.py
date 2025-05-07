@@ -15,7 +15,7 @@ from src.config import (
     NUM_RUNS, NUM_GENERATIONS, SEED_BASE, CONFIDENCE,
     P_INIT, BETA_SIGMOID, NEAT_EVAL_PERIOD, POPULATION_SIZE,
     REPLAY_CAPACITY, BATCH_SIZE, Q_HIDDEN_DIMS, LR_Q, GAMMA,
-    ALPHA_MIXED_REWARD, LOG_DIR, MODEL_DIR, CONFIG_PATH
+    ALPHA_MIXED_REWARD, LOG_DIR, MODEL_DIR
 )
 from src.environment import make_env
 from src.rl.q_learning import QAgent
@@ -23,6 +23,9 @@ from src.hybrid_agent import HybridAgent
 from src.evaluation import evaluate_genome
 from src.visualization import plot_training_progression
 from src.visualization_extended import plot_hybrid_results
+
+# 获取配置文件路径
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'neat_config.txt')
 
 def setup_logging():
     """设置日志"""
