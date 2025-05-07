@@ -116,7 +116,8 @@ def main():
     agent = HybridAgent({
         'P_INIT': P_INIT,
         'BETA_SIGMOID': BETA_SIGMOID,
-        'NEAT_EVAL_PERIOD': NEAT_EVAL_PERIOD
+        'NEAT_EVAL_PERIOD': NEAT_EVAL_PERIOD,
+        'REPLAY_CAPACITY': REPLAY_CAPACITY
     }, neat_pop, q_agent)
     
     # 训练
