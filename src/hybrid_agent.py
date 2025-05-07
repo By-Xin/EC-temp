@@ -37,6 +37,30 @@ class HybridAgent:
         self.neat_fitness = []
         self.q_fitness = []
         
+        # 初始化NEAT种群
+        self._initialize_neat_population()
+        
+    def _initialize_neat_population(self):
+        """初始化NEAT种群"""
+        # 为每个基因组设置初始适应度
+        for genome in self.neat_pop.population.values():
+            genome.fitness = 0.0
+            
+        # 运行一代以初始化种群
+        self.neat_pop.run(self._evaluate_genome, 1)
+        
+    def _get_best_genome(self):
+        """获取最佳基因组
+        
+        Returns:
+            neat.DefaultGenome: 最佳基因组
+        """
+        if not hasattr(self.neat_pop, 'best_genome') or self.neat_pop.best_genome is None:
+            # 如果没有最佳基因组，返回种群中适应度最高的基因组
+            return max(self.neat_pop.population.values(), 
+                      key=lambda x: x.fitness if x.fitness is not None else float('-inf'))
+        return self.neat_pop.best_genome
+        
     def act(self, state):
         """选择动作
         
@@ -54,7 +78,8 @@ class HybridAgent:
             return self.q_agent.act(state)
         else:
             # 使用NEAT
-            net = neat.nn.FeedForwardNetwork.create(self.neat_pop.best_genome, self.neat_pop.config)
+            best_genome = self._get_best_genome()
+            net = neat.nn.FeedForwardNetwork.create(best_genome, self.neat_pop.config)
             action_values = net.activate(state)
             return np.argmax(action_values)
             
@@ -202,7 +227,8 @@ class HybridAgent:
             episode_return = 0.0
             
             while not (done or truncated):
-                net = neat.nn.FeedForwardNetwork.create(self.neat_pop.best_genome, self.neat_pop.config)
+                best_genome = self._get_best_genome()
+                net = neat.nn.FeedForwardNetwork.create(best_genome, self.neat_pop.config)
                 action_values = net.activate(state)
                 action = np.argmax(action_values)
                 next_state, reward, done, truncated, _ = env.step(action)
