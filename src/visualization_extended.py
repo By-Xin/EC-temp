@@ -8,6 +8,7 @@ from src.config import (
     mahh_stats, reward_shaping_stats, 
     USE_MAHH, USE_REWARD_SHAPING
 )
+from typing import List, Optional
 
 def plot_mahh_statistics():
     """绘制MAHH统计图，包括接受概率和停滞指标的变化"""
@@ -122,142 +123,124 @@ def plot_reward_shaping_statistics():
     print(f"塑形奖励均值: {np.mean(reward_shaping_stats['shaped_rewards']):.4f}")
     print(f"最终偏移量: {reward_shaping_stats['bias_history'][-1] if reward_shaping_stats['bias_history'] else 0:.4f}")
 
-def plot_combined_learning_curves(meta_data, vanilla_data, meta_mahh_data=None, vanilla_mahh_data=None, confidence=0.95):
-    """
-    绘制结合了原始方法和改进方法的学习曲线
+def plot_hybrid_results(returns: List[float], p_values: List[float], title: str):
+    """绘制混合代理的训练结果
     
     Args:
-        meta_data (list): Meta-NEAT训练数据
-        vanilla_data (list): Vanilla NEAT训练数据
-        meta_mahh_data (list, optional): 使用MAHH的Meta-NEAT训练数据
-        vanilla_mahh_data (list, optional): 使用MAHH的Vanilla NEAT训练数据
-        confidence (float, optional): 置信度. Defaults to 0.95.
+        returns (List[float]): 每个episode的回报
+        p_values (List[float]): 每个episode的p值
+        title (str): 图表标题
     """
-    from scipy import stats
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
     
-    def calculate_confidence_interval(data, confidence=0.95):
-        if len(data) <= 1:
-            return 0
-        n = len(data)
-        m = np.mean(data)
-        se = stats.sem(data)
-        h = se * stats.t.ppf((1 + confidence) / 2, n - 1)
-        return h
+    # 绘制回报曲线
+    ax1.plot(returns, label='Episode Return')
+    ax1.set_xlabel('Episode')
+    ax1.set_ylabel('Return')
+    ax1.set_title('Training Returns')
+    ax1.grid(True)
     
-    plt.figure(figsize=(16, 10))
+    # 计算移动平均
+    window_size = 100
+    if len(returns) >= window_size:
+        moving_avg = np.convolve(returns, np.ones(window_size)/window_size, mode='valid')
+        ax1.plot(range(window_size-1, len(returns)), moving_avg, 
+                label=f'{window_size}-Episode Moving Average', color='red')
+    ax1.legend()
     
-    # 确定最大代数
-    max_gens = max([
-        max([len(data) for data in meta_data]) if meta_data else 0,
-        max([len(data) for data in vanilla_data]) if vanilla_data else 0,
-        max([len(data) for data in meta_mahh_data]) if meta_mahh_data else 0,
-        max([len(data) for data in vanilla_mahh_data]) if vanilla_mahh_data else 0
-    ])
+    # 绘制p值曲线
+    ax2.plot(p_values, label='Q-learning Probability (p)')
+    ax2.set_xlabel('Episode')
+    ax2.set_ylabel('Probability')
+    ax2.set_title('Q-learning vs NEAT Selection Probability')
+    ax2.grid(True)
     
-    x = list(range(1, max_gens + 1))
+    # 添加水平线表示0.5
+    ax2.axhline(y=0.5, color='r', linestyle='--', alpha=0.5)
+    ax2.legend()
     
-    # 设置颜色和标记
-    colors = ['blue', 'red', 'green', 'purple']
-    markers = ['o', 's', '^', 'x']
-    labels = ['Meta-NEAT', 'Vanilla NEAT', 'Meta-NEAT+MAHH', 'Vanilla NEAT+MAHH']
-    data_sets = [meta_data, vanilla_data, meta_mahh_data, vanilla_mahh_data]
-    
-    # 为每个数据集绘制学习曲线
-    for i, dataset in enumerate(data_sets):
-        if not dataset:
-            continue
-            
-        # 计算每代的平均值和置信区间
-        y_values = []
-        ci_values = []
-        
-        for gen in range(max_gens):
-            gen_data = [run_data[gen] if gen < len(run_data) else None for run_data in dataset]
-            gen_data = [d for d in gen_data if d is not None]
-            
-            if gen_data:
-                y_values.append(np.mean(gen_data))
-                ci_values.append(calculate_confidence_interval(gen_data, confidence))
-            else:
-                y_values.append(0)
-                ci_values.append(0)
-        
-        # 绘制带置信区间的曲线
-        plt.plot(x, y_values, marker=markers[i], color=colors[i], label=labels[i], linewidth=2)
-        plt.fill_between(
-            x, 
-            np.array(y_values) - np.array(ci_values),
-            np.array(y_values) + np.array(ci_values),
-            color=colors[i], alpha=0.2
-        )
-    
-    plt.xlabel('进化代数', fontsize=16)
-    plt.ylabel('适应度', fontsize=16)
-    plt.title(f'NEAT变体性能对比 ({confidence*100:.0f}%置信区间)', fontsize=18)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.legend(fontsize=14)
-    
-    plt.savefig('neat_variants_comparison.png', dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.suptitle(title)
+    plt.tight_layout()
+    plt.savefig('hybrid_training_results.png')
+    plt.close()
 
-def plot_ablation_study_results(results, confidence=0.95):
-    """
-    绘制消融实验结果
+def plot_ablation_study_results(results: dict, confidence: float = 0.95):
+    """绘制消融实验结果
     
     Args:
-        results (dict): 包含不同配置结果的字典
-        confidence (float, optional): 置信度. Defaults to 0.95.
+        results (dict): 不同配置的结果
+        confidence (float): 置信度
     """
-    from scipy import stats
-    
-    def calculate_confidence_interval(data, confidence=0.95):
-        if len(data) <= 1:
-            return 0
-        n = len(data)
-        m = np.mean(data)
-        se = stats.sem(data)
-        h = se * stats.t.ppf((1 + confidence) / 2, n - 1)
-        return h
-    
-    # 期望的格式：
-    # results = {
-    #    "Baseline": [rewards_list],
-    #    "MAHH": [rewards_list],
-    #    "RewardShaping": [rewards_list],
-    #    "MAHH+RewardShaping": [rewards_list]
-    # }
-    
-    plt.figure(figsize=(12, 8))
-    
-    # 计算每个配置的平均值和置信区间
+    # 计算每个配置的统计量
     means = []
-    errors = []
+    stds = []
     labels = []
     
-    for label, rewards in results.items():
+    for name, rewards in results.items():
         means.append(np.mean(rewards))
-        errors.append(calculate_confidence_interval(rewards, confidence))
-        labels.append(label)
+        stds.append(np.std(rewards))
+        labels.append(name)
     
     # 绘制条形图
+    plt.figure(figsize=(12, 6))
     x = np.arange(len(labels))
-    plt.bar(x, means, yerr=errors, align='center', alpha=0.7, capsize=10, color=['gray', 'blue', 'green', 'purple'])
+    width = 0.35
     
-    plt.ylabel('平均适应度', fontsize=14)
-    plt.title(f'消融实验结果 ({confidence*100:.0f}%置信区间)', fontsize=16)
-    plt.xticks(x, labels, fontsize=12)
-    plt.grid(True, axis='y', linestyle='--', alpha=0.7)
+    plt.bar(x, means, width, yerr=stds, capsize=5)
+    plt.xlabel('Configuration')
+    plt.ylabel('Average Reward')
+    plt.title('Ablation Study Results')
+    plt.xticks(x, labels, rotation=45)
+    plt.grid(True, alpha=0.3)
     
     # 添加数值标签
     for i, v in enumerate(means):
-        plt.text(i, v + errors[i] + 0.05 * max(means), f'{v:.2f}', ha='center', fontsize=12)
+        plt.text(i, v + stds[i], f'{v:.2f}', ha='center')
     
     plt.tight_layout()
-    plt.savefig('ablation_study_results.png', dpi=300, bbox_inches='tight')
-    plt.show()
+    plt.savefig('ablation_study_results.png')
+    plt.close()
+
+def plot_combined_learning_curves(baseline_meta_data, baseline_vanilla_data,
+                                combined_meta_data, combined_vanilla_data,
+                                confidence: float = 0.95):
+    """绘制组合学习曲线
     
-    # 打印统计信息
-    print("\n=== 消融实验统计摘要 ===")
-    for label, rewards in results.items():
-        ci = calculate_confidence_interval(rewards, confidence)
-        print(f"{label}: 平均值 = {np.mean(rewards):.2f} ± {ci:.2f}")
+    Args:
+        baseline_meta_data: 基线Meta-NEAT数据
+        baseline_vanilla_data: 基线Vanilla NEAT数据
+        combined_meta_data: 组合Meta-NEAT数据
+        combined_vanilla_data: 组合Vanilla NEAT数据
+        confidence (float): 置信度
+    """
+    plt.figure(figsize=(12, 6))
+    
+    # 计算移动平均
+    window_size = 10
+    
+    def plot_curve(data, label, color):
+        mean = np.mean(data, axis=0)
+        std = np.std(data, axis=0)
+        x = np.arange(len(mean))
+        
+        # 计算置信区间
+        ci = std * 1.96 / np.sqrt(len(data))
+        
+        plt.plot(x, mean, label=label, color=color)
+        plt.fill_between(x, mean-ci, mean+ci, color=color, alpha=0.2)
+    
+    # 绘制四条曲线
+    plot_curve(baseline_meta_data, 'Baseline Meta-NEAT', 'blue')
+    plot_curve(baseline_vanilla_data, 'Baseline Vanilla NEAT', 'red')
+    plot_curve(combined_meta_data, 'Combined Meta-NEAT', 'green')
+    plot_curve(combined_vanilla_data, 'Combined Vanilla NEAT', 'purple')
+    
+    plt.xlabel('Generation')
+    plt.ylabel('Average Reward')
+    plt.title('Learning Curves Comparison')
+    plt.legend()
+    plt.grid(True)
+    
+    plt.tight_layout()
+    plt.savefig('combined_learning_curves.png')
+    plt.close()
