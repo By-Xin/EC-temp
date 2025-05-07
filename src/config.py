@@ -118,3 +118,23 @@ def collect_statistics():
         "alpha_mixed_reward": ALPHA_MIXED_REWARD
     }
 
+def get_config():
+    """获取配置参数字典
+    
+    Returns:
+        dict: 配置参数字典
+    """
+    return {
+        'P_INIT': P_INIT,
+        'BETA_SIGMOID': BETA_SIGMOID,
+        'NEAT_EVAL_PERIOD': NEAT_EVAL_PERIOD,
+        'REPLAY_CAPACITY': REPLAY_CAPACITY,
+        'BATCH_SIZE': BATCH_SIZE,
+        'Q_HIDDEN_DIMS': Q_HIDDEN_DIMS,
+        'LR_Q': LR_Q,
+        'GAMMA': GAMMA,
+        'ALPHA_MIXED_REWARD': ALPHA_MIXED_REWARD,
+        'LOG_DIR': LOG_DIR,
+        'MODEL_DIR': MODEL_DIR
+    }
+

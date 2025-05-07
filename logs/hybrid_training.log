@@ -40,3 +40,25 @@
 2025-05-07 17:23:24,751 - HybridTraining - INFO - Hybrid Agent Mean Return: 152.68
 2025-05-07 17:23:24,752 - HybridTraining - INFO - Vanilla NEAT Mean Return: 9.28
 2025-05-07 17:23:24,825 - HybridTraining - INFO - Training and comparison completed
+2025-05-07 17:25:44,342 - HybridTraining - INFO - Starting hybrid agent training
+2025-05-07 17:25:44,342 - HybridTraining - INFO - Arguments: Namespace(num_episodes=200, eval_episodes=50, p_init=0.5, beta_sigmoid=5.0, neat_eval_period=5, log_dir='logs', model_dir='models')
+2025-05-07 17:25:44,346 - HybridTraining - INFO - Environment: CartPole-v1
+2025-05-07 17:25:44,346 - HybridTraining - INFO - State space: Box([-4.8000002e+00 -3.4028235e+38 -4.1887903e-01 -3.4028235e+38], [4.8000002e+00 3.4028235e+38 4.1887903e-01 3.4028235e+38], (4,), float32)
+2025-05-07 17:25:44,346 - HybridTraining - INFO - Action space: Discrete(2)
+2025-05-07 17:25:45,021 - HybridTraining - INFO - Episode 0: Return = 35.84, p = 0.500
+2025-05-07 17:25:50,070 - HybridTraining - INFO - Episode 100: Return = 219.62, p = 0.500
+2025-05-07 17:26:13,500 - HybridTraining - INFO - Comparing with vanilla NEAT...
+2025-05-07 17:26:14,165 - HybridTraining - INFO - Hybrid Agent Mean Return: 174.08
+2025-05-07 17:26:14,165 - HybridTraining - INFO - Vanilla NEAT Mean Return: 33.50
+2025-05-07 17:26:14,240 - HybridTraining - INFO - Training and comparison completed
+2025-05-07 17:28:28,312 - HybridTraining - INFO - Starting hybrid agent training
+2025-05-07 17:28:28,312 - HybridTraining - INFO - Arguments: Namespace(num_episodes=200, eval_episodes=50, p_init=0.5, beta_sigmoid=5.0, neat_eval_period=5, log_dir='logs', model_dir='models')
+2025-05-07 17:28:28,316 - HybridTraining - INFO - Environment: CartPole-v1
+2025-05-07 17:28:28,316 - HybridTraining - INFO - State space: Box([-4.8000002e+00 -3.4028235e+38 -4.1887903e-01 -3.4028235e+38], [4.8000002e+00 3.4028235e+38 4.1887903e-01 3.4028235e+38], (4,), float32)
+2025-05-07 17:28:28,316 - HybridTraining - INFO - Action space: Discrete(2)
+2025-05-07 17:28:28,951 - HybridTraining - INFO - Episode 0: Return = 9.94, p = 0.500
+2025-05-07 17:28:38,103 - HybridTraining - INFO - Episode 100: Return = 373.59, p = 0.500
+2025-05-07 17:29:15,657 - HybridTraining - INFO - Comparing with vanilla NEAT...
+2025-05-07 17:29:16,661 - HybridTraining - INFO - Hybrid Agent Mean Return: 335.72
+2025-05-07 17:29:16,661 - HybridTraining - INFO - Vanilla NEAT Mean Return: 93.98
+2025-05-07 17:29:16,739 - HybridTraining - INFO - Training and comparison completed

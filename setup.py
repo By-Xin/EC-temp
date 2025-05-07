@@ -1,0 +1,16 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="hybrid-agent",
+    version="0.1",
+    packages=find_packages(),
+    install_requires=[
+        'numpy>=1.21.0',
+        'scipy>=1.7.0',
+        'matplotlib>=3.4.0',
+        'tqdm>=4.62.0',
+        'neat-python>=0.92',
+        'torch>=1.9.0',
+        'gym>=0.21.0'
+    ]
+) 

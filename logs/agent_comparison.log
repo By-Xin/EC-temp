@@ -1,0 +1,22 @@
+2025-05-07 17:29:45,819 - AgentComparison - INFO - Starting agent comparison
+2025-05-07 17:29:45,823 - AgentComparison - INFO - Environment: CartPole-v1
+2025-05-07 17:31:08,211 - AgentComparison - INFO - Starting agent comparison
+2025-05-07 17:31:08,215 - AgentComparison - INFO - Environment: CartPole-v1
+2025-05-07 17:31:57,023 - AgentComparison - INFO - Starting agent comparison
+2025-05-07 17:31:57,027 - AgentComparison - INFO - Environment: CartPole-v1
+2025-05-07 17:32:55,133 - AgentComparison - INFO - Starting agent comparison
+2025-05-07 17:32:55,140 - AgentComparison - INFO - Environment: CartPole-v1
+2025-05-07 17:32:55,837 - AgentComparison - INFO - Evaluating NEAT agent...
+2025-05-07 17:32:56,082 - AgentComparison - INFO - NEAT average return: 107.06 ± 33.93
+2025-05-07 17:32:56,083 - AgentComparison - INFO - Evaluating Q-learning agent...
+2025-05-07 17:32:56,096 - AgentComparison - INFO - Q-learning average return: 21.32 ± 8.33
+2025-05-07 17:32:56,096 - AgentComparison - INFO - Evaluating Hybrid agent...
+2025-05-07 17:32:56,113 - AgentComparison - INFO - Hybrid average return: 21.96 ± 9.51
+2025-05-07 17:34:19,678 - AgentComparison - INFO - Starting agent comparison
+2025-05-07 17:34:19,683 - AgentComparison - INFO - Environment: CartPole-v1
+2025-05-07 17:34:20,295 - AgentComparison - INFO - Evaluating NEAT agent...
+2025-05-07 17:34:21,533 - AgentComparison - INFO - NEAT average return: 58.93 ± 10.95
+2025-05-07 17:34:21,534 - AgentComparison - INFO - Evaluating Q-learning agent...
+2025-05-07 17:34:21,648 - AgentComparison - INFO - Q-learning average return: 22.51 ± 12.56
+2025-05-07 17:34:21,648 - AgentComparison - INFO - Evaluating Hybrid agent...
+2025-05-07 17:34:21,832 - AgentComparison - INFO - Hybrid average return: 25.85 ± 15.60
