@@ -7,6 +7,7 @@ import logging
 import numpy as np
 from tqdm import tqdm
 import neat
+import argparse
 
 # 添加项目根目录到Python路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -27,13 +28,18 @@ from src.visualization_extended import plot_hybrid_results
 # 获取配置文件路径
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'config', 'neat_config.txt')
 
-def setup_logging():
-    """设置日志"""
+def setup_logging(log_dir):
+    """设置日志
+    
+    Args:
+        log_dir (str): 日志目录
+    """
+    os.makedirs(log_dir, exist_ok=True)
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(os.path.join(LOG_DIR, 'hybrid_training.log')),
+            logging.FileHandler(os.path.join(log_dir, 'hybrid_training.log')),
             logging.StreamHandler()
         ]
     )
@@ -90,11 +96,16 @@ def train_hybrid_agent(env, agent, num_episodes, logger):
             
     return returns, p_values
 
-def main():
-    """主函数"""
+def main(args):
+    """主函数
+    
+    Args:
+        args: 命令行参数
+    """
     # 设置日志
-    logger = setup_logging()
+    logger = setup_logging(args.log_dir)
     logger.info("Starting hybrid agent training")
+    logger.info(f"Arguments: {args}")
     
     # 创建环境
     env = make_env()
@@ -123,19 +134,18 @@ def main():
     
     # 创建混合代理
     agent = HybridAgent({
-        'P_INIT': P_INIT,
-        'BETA_SIGMOID': BETA_SIGMOID,
-        'NEAT_EVAL_PERIOD': NEAT_EVAL_PERIOD,
+        'P_INIT': args.p_init,
+        'BETA_SIGMOID': args.beta_sigmoid,
+        'NEAT_EVAL_PERIOD': args.neat_eval_period,
         'REPLAY_CAPACITY': REPLAY_CAPACITY
     }, neat_pop, q_agent)
     
     # 训练
-    num_episodes = 100  # 减少训练轮数到100轮
-    returns, p_values = train_hybrid_agent(env, agent, num_episodes, logger)
+    returns, p_values = train_hybrid_agent(env, agent, args.num_episodes, logger)
     
     # 保存模型
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    agent.save(os.path.join(MODEL_DIR, 'hybrid_agent'))
+    os.makedirs(args.model_dir, exist_ok=True)
+    agent.save(os.path.join(args.model_dir, 'hybrid_agent'))
     
     # 绘制训练结果
     plot_training_progression(returns, "Hybrid Agent Training")
@@ -143,7 +153,7 @@ def main():
     
     # 与普通NEAT进行对比
     logger.info("Comparing with vanilla NEAT...")
-    hybrid_mean, neat_mean = agent.compare_with_neat(env, num_episodes=20)  # 减少对比轮数到20轮
+    hybrid_mean, neat_mean = agent.compare_with_neat(env, num_episodes=args.eval_episodes)
     logger.info(f"Hybrid Agent Mean Return: {hybrid_mean:.2f}")
     logger.info(f"Vanilla NEAT Mean Return: {neat_mean:.2f}")
     
@@ -153,10 +163,33 @@ def main():
     plt.bar(['Hybrid Agent', 'Vanilla NEAT'], [hybrid_mean, neat_mean])
     plt.title('Performance Comparison')
     plt.ylabel('Mean Return')
-    plt.savefig(os.path.join(LOG_DIR, 'performance_comparison.png'))
+    plt.savefig(os.path.join(args.log_dir, 'performance_comparison.png'))
     plt.close()
     
     logger.info("Training and comparison completed")
 
 if __name__ == "__main__":
-    main() 
+    parser = argparse.ArgumentParser(description='混合代理训练脚本')
+    
+    # 训练参数
+    parser.add_argument('--num_episodes', type=int, default=100,
+                      help='训练轮数 (默认: 100)')
+    parser.add_argument('--eval_episodes', type=int, default=20,
+                      help='评估轮数 (默认: 20)')
+    
+    # 混合代理参数
+    parser.add_argument('--p_init', type=float, default=P_INIT,
+                      help='初始Q-learning概率 (默认: 0.5)')
+    parser.add_argument('--beta_sigmoid', type=float, default=BETA_SIGMOID,
+                      help='sigmoid函数温度参数 (默认: 0.1)')
+    parser.add_argument('--neat_eval_period', type=int, default=NEAT_EVAL_PERIOD,
+                      help='NEAT评估周期 (默认: 10)')
+    
+    # 路径参数
+    parser.add_argument('--log_dir', type=str, default=LOG_DIR,
+                      help='日志保存目录')
+    parser.add_argument('--model_dir', type=str, default=MODEL_DIR,
+                      help='模型保存目录')
+    
+    args = parser.parse_args()
+    main(args) 
