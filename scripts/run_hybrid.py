@@ -130,7 +130,7 @@ def main():
     }, neat_pop, q_agent)
     
     # 训练
-    num_episodes = NUM_GENERATIONS * 100  # 每个代数100个episode
+    num_episodes = 100  # 减少训练轮数到100轮
     returns, p_values = train_hybrid_agent(env, agent, num_episodes, logger)
     
     # 保存模型
@@ -143,7 +143,7 @@ def main():
     
     # 与普通NEAT进行对比
     logger.info("Comparing with vanilla NEAT...")
-    hybrid_mean, neat_mean = agent.compare_with_neat(env, num_episodes=100)
+    hybrid_mean, neat_mean = agent.compare_with_neat(env, num_episodes=20)  # 减少对比轮数到20轮
     logger.info(f"Hybrid Agent Mean Return: {hybrid_mean:.2f}")
     logger.info(f"Vanilla NEAT Mean Return: {neat_mean:.2f}")
     
